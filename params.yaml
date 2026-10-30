@@ -1,0 +1,42 @@
+as_of_date: "2026-10-29"
+seed: 42
+
+data:
+  market_url_env: FOMO_MARKET_URL
+  trades_url_env: FOMO_TRADES_URL
+  market_path: artifacts/raw/btc_market_ohlcv.csv
+  trades_path: artifacts/raw/btc_trade_log.csv
+  manifest_path: artifacts/raw/manifest.json
+
+features:
+  feature_set: fomo_32_v1
+  window_days: 180
+  step_days: 30
+  min_buys: 5
+  min_buy_days: 3
+  output_path: artifacts/features/investor_window_32features.csv
+
+preprocessing:
+  min_coverage: 0.80
+  min_std: 0.02
+  min_iqr: 0.02
+  max_spearman: 0.70
+  lower_priority_features:
+    - order_intensity_per_active_week
+    - first_buy_in_rally_bias
+    - dip_buy_lift
+  pca_variance_target: 0.90
+
+model:
+  algorithms: [kmeans, minibatch_kmeans, gmm]
+  k_candidates: [2, 3, 4, 5, 6]
+  n_init: 5
+  max_iter: 300
+  output_dir: artifacts/models
+
+evaluation:
+  output_dir: artifacts/evaluation
+
+tracking:
+  uri: sqlite:///mlflow.db
+  experiment: fomo-clustering

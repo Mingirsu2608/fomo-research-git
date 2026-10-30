@@ -1,0 +1,189 @@
+schema: '2.0'
+stages:
+  extract:
+    cmd: python -m src.pipelines.extract
+    deps:
+    - path: src/data/extract.py
+      hash: md5
+      md5: 14d50ffee9bd122b35e351db6a9f5c62
+      size: 1678
+    - path: src/pipelines/common.py
+      hash: md5
+      md5: 5dd5a9059ebabf3745750eb938bdbaa8
+      size: 1570
+    - path: src/pipelines/extract.py
+      hash: md5
+      md5: 0e24a2eebf1369e3c6f8dae677dfc04e
+      size: 276
+    - path: src/pipelines/validation.py
+      hash: md5
+      md5: 45c0eb859b2338f71c9d11c29757c700
+      size: 7307
+    params:
+      params.yaml:
+        as_of_date: '2026-10-29'
+        data:
+          market_url_env: FOMO_MARKET_URL
+          trades_url_env: FOMO_TRADES_URL
+          market_path: artifacts/raw/btc_market_ohlcv.csv
+          trades_path: artifacts/raw/btc_trade_log.csv
+          manifest_path: artifacts/raw/manifest.json
+    outs:
+    - path: artifacts/raw
+      hash: md5
+      md5: b520c677ccb3ef2343dce26561cf0adc.dir
+      size: 48055786
+      nfiles: 3
+  features:
+    cmd: python -m src.pipelines.features
+    deps:
+    - path: artifacts/raw
+      hash: md5
+      md5: b520c677ccb3ef2343dce26561cf0adc.dir
+      size: 48055786
+      nfiles: 3
+    - path: src/features/build.py
+      hash: md5
+      md5: dc3aaef98dc890646bcdf57cb0ba1d3e
+      size: 17768
+    - path: src/pipelines/common.py
+      hash: md5
+      md5: 5dd5a9059ebabf3745750eb938bdbaa8
+      size: 1570
+    - path: src/pipelines/features.py
+      hash: md5
+      md5: 501da2f7fc64f0e70d8577686c1d4258
+      size: 293
+    - path: src/pipelines/validation.py
+      hash: md5
+      md5: 45c0eb859b2338f71c9d11c29757c700
+      size: 7307
+    params:
+      params.yaml:
+        features:
+          feature_set: fomo_32_v1
+          window_days: 180
+          step_days: 30
+          min_buys: 5
+          min_buy_days: 3
+          output_path: artifacts/features/investor_window_32features.csv
+    outs:
+    - path: artifacts/features
+      hash: md5
+      md5: fc6a80cb8c808c115537831cee5aeb8f.dir
+      size: 60957018
+      nfiles: 1
+  cluster:
+    cmd: python -m src.pipelines.cluster
+    deps:
+    - path: artifacts/features
+      hash: md5
+      md5: fc6a80cb8c808c115537831cee5aeb8f.dir
+      size: 60957018
+      nfiles: 1
+    - path: src/models/preprocess.py
+      hash: md5
+      md5: 95dc160c79931d3ec7f423ab00b8347a
+      size: 5168
+    - path: src/models/train.py
+      hash: md5
+      md5: 94f9f6c076efdb30eb01f7c6d4cc07bc
+      size: 4210
+    - path: src/pipelines/cluster.py
+      hash: md5
+      md5: 1e49b09bcf9ed2829ccbe818d27fae9e
+      size: 286
+    - path: src/pipelines/common.py
+      hash: md5
+      md5: 5dd5a9059ebabf3745750eb938bdbaa8
+      size: 1570
+    - path: src/pipelines/validation.py
+      hash: md5
+      md5: 45c0eb859b2338f71c9d11c29757c700
+      size: 7307
+    params:
+      params.yaml:
+        model:
+          algorithms:
+          - kmeans
+          - minibatch_kmeans
+          - gmm
+          k_candidates:
+          - 2
+          - 3
+          - 4
+          - 5
+          - 6
+          n_init: 5
+          max_iter: 300
+          output_dir: artifacts/models
+        preprocessing:
+          min_coverage: 0.8
+          min_std: 0.02
+          min_iqr: 0.02
+          max_spearman: 0.7
+          lower_priority_features:
+          - order_intensity_per_active_week
+          - first_buy_in_rally_bias
+          - dip_buy_lift
+          pca_variance_target: 0.9
+        seed: 42
+        tracking:
+          uri: sqlite:///mlflow.db
+          experiment: fomo-clustering
+    outs:
+    - path: artifacts/models
+      hash: md5
+      md5: d7f5754112cfcde6cc100aaa4170b13a.dir
+      size: 579280
+      nfiles: 8
+  evaluate:
+    cmd: python -m src.pipelines.evaluate
+    deps:
+    - path: artifacts/features
+      hash: md5
+      md5: fc6a80cb8c808c115537831cee5aeb8f.dir
+      size: 60957018
+      nfiles: 1
+    - path: artifacts/models
+      hash: md5
+      md5: d7f5754112cfcde6cc100aaa4170b13a.dir
+      size: 579280
+      nfiles: 8
+    - path: src/evaluation/evaluate.py
+      hash: md5
+      md5: 2aa610e3b066113b32f5c5cef8dff740
+      size: 1869
+    - path: src/models/preprocess.py
+      hash: md5
+      md5: 95dc160c79931d3ec7f423ab00b8347a
+      size: 5168
+    - path: src/pipelines/common.py
+      hash: md5
+      md5: 5dd5a9059ebabf3745750eb938bdbaa8
+      size: 1570
+    - path: src/pipelines/evaluate.py
+      hash: md5
+      md5: b3ee35bf96f3852b05d07a67a3cd6fde
+      size: 300
+    - path: src/pipelines/validation.py
+      hash: md5
+      md5: 45c0eb859b2338f71c9d11c29757c700
+      size: 7307
+    params:
+      params.yaml:
+        evaluation:
+          output_dir: artifacts/evaluation
+    outs:
+    - path: artifacts/evaluation/cluster_profiles.csv
+      hash: md5
+      md5: 281328a14f998a1f6ea793e17403c299
+      size: 2902
+    - path: artifacts/evaluation/cluster_sizes.csv
+      hash: md5
+      md5: c6ea1b6c9a28575d7d4f69fab2fcac95
+      size: 245
+    - path: artifacts/evaluation/model_metrics.json
+      hash: md5
+      md5: fecdf17047c53daa4257ee3c0472584e
+      size: 436

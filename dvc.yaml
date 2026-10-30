@@ -1,0 +1,62 @@
+stages:
+  extract:
+    cmd: python -m src.pipelines.extract
+    deps:
+      - src/pipelines/common.py
+      - src/pipelines/validation.py
+      - src/data/extract.py
+      - src/pipelines/extract.py
+    params:
+      - as_of_date
+      - data
+    outs:
+      - artifacts/raw
+
+  features:
+    cmd: python -m src.pipelines.features
+    deps:
+      - src/pipelines/common.py
+      - src/pipelines/validation.py
+      - artifacts/raw
+      - src/features/build.py
+      - src/pipelines/features.py
+    params:
+      - features
+    outs:
+      - artifacts/features
+
+  cluster:
+    cmd: python -m src.pipelines.cluster
+    deps:
+      - src/pipelines/common.py
+      - src/pipelines/validation.py
+      - artifacts/features
+      - src/models/preprocess.py
+      - src/models/train.py
+      - src/pipelines/cluster.py
+    params:
+      - seed
+      - model
+      - preprocessing
+      - tracking
+    outs:
+      - artifacts/models
+
+  evaluate:
+    cmd: python -m src.pipelines.evaluate
+    deps:
+      - src/pipelines/common.py
+      - src/pipelines/validation.py
+      - artifacts/features
+      - artifacts/models
+      - src/models/preprocess.py
+      - src/evaluation/evaluate.py
+      - src/pipelines/evaluate.py
+    params:
+      - evaluation
+    metrics:
+      - artifacts/evaluation/model_metrics.json
+    outs:
+      - artifacts/evaluation/cluster_profiles.csv
+      - artifacts/evaluation/cluster_sizes.csv
+
